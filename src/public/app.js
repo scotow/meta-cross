@@ -9,7 +9,6 @@ class Game {
         this.currentMetaGrid = null;
         this.createGrid();
         this.createFooter();
-        console.log(sign, startingSign);
     }
 
     createGrid(container, selfX, selfY) {
@@ -73,11 +72,15 @@ class Game {
         youLabelEl.classList.add('label');
         youLabelEl.innerText = 'You';
 
+        const zoomModeLabelEl = document.createElement('div');
+        zoomModeLabelEl.classList.add('label');
+        zoomModeLabelEl.innerText = 'Fullscreen';
+
         this.zoomModeEl = document.createElement('div');
         this.zoomModeEl.classList.add('action', 'hidden');
         this.zoomModeEl.addEventListener('click', () => {
             this.zoomedMode = !this.zoomedMode;
-            this.zoomModeLabelEl.innerText = this.zoomedMode ? 'Zoomed' : 'Fullscreen';
+            zoomModeLabelEl.innerText = this.zoomedMode ? 'Zoomed' : 'Fullscreen';
 
             if (this.zoomedMode) {
                 this.zoomToSubGrid();
@@ -85,10 +88,6 @@ class Game {
                 this.zoomOut();
             }
         });
-
-        this.zoomModeLabelEl = document.createElement('div');
-        this.zoomModeLabelEl.classList.add('label');
-        this.zoomModeLabelEl.innerText = 'Fullscreen';
 
         const zoomModeButtonEl = document.createElement('div');
         zoomModeButtonEl.classList.add('button');
@@ -110,7 +109,7 @@ class Game {
 
         this.youEl.append(youSign, youLabelEl);
         this.opponentEl.append(opponentLabelEl, opponenetSign);
-        this.zoomModeEl.append(this.zoomModeLabelEl, zoomModeButtonEl);
+        this.zoomModeEl.append(zoomModeLabelEl, zoomModeButtonEl);
         contentEl.append(this.youEl, this.zoomModeEl, this.opponentEl);
         this.footerEl.append(contentEl);
         document.body.append(this.footerEl);
@@ -173,7 +172,8 @@ class Game {
         };
         const cellEl = document.querySelectorAll('.sub-grid .cell')[(meta.y * 3 + meta.x) * 9 + sub.y * 3 + sub.x];
         const signEl = document.createElement('div');
-        signEl.classList.add(data.readUnsignedByte() ? 'circle' : 'cross');
+        const sign = data.readUnsignedByte();
+        signEl.classList.add(sign ? 'circle' : 'cross');
         cellEl.append(signEl);
 
         setTimeout(() => {
@@ -186,10 +186,28 @@ class Game {
                 cellEls[(meta.y * 3 + meta.x) * 9 + cell.y * 3 + cell.x].classList.add('blink');
             }
             setTimeout(() => {
+                this.updatePlyingIndicator(false);
                 this.zoomedMode = false;
                 this.zoomOut();
-                this.zoomModeEl.classList.add('hidden');
-                this.updatePlyingIndicator(false);
+
+                const gameStatusLabelEl = document.createElement('div');
+                gameStatusLabelEl.classList.add('label');
+                gameStatusLabelEl.innerText = sign === this.sign ? 'You win' : 'You lose';
+        
+                const gameStatusEl = document.createElement('div');
+                gameStatusEl.classList.add('action');
+                gameStatusEl.addEventListener('click', () => {
+                    this.gridEl.remove();
+                    this.footerEl.remove();
+                    queue();
+                });
+        
+                const gameStatusButtonEl = document.createElement('div');
+                gameStatusButtonEl.classList.add('button');
+                gameStatusButtonEl.innerText = 'Play again';
+        
+                gameStatusEl.append(gameStatusLabelEl, gameStatusButtonEl);
+                this.zoomModeEl.replaceWith(gameStatusEl);
 
                 setTimeout(() => {
                     document.querySelectorAll('.grid').forEach((el) => el.classList.remove('fadded'));
@@ -213,6 +231,13 @@ function baseWebsocketUrl() {
     return `${window.location.protocol.slice(0, -1) === 'https' ? 'wss' : 'ws'}://${window.location.host}`;
 }
 
+function queue() {
+    document.getElementById('queue').hidden = false;
+    const data = new ByteBuffer(0, ByteBuffer.BIG_ENDIAN, true);
+    data.writeUnsignedByte(0);
+    socket.send(data.buffer);
+}
+
 const socket = new WebSocket(`${baseWebsocketUrl()}/ws`);
 socket.binaryType = 'arraybuffer';
 socket.addEventListener('open', () => {
@@ -221,6 +246,7 @@ socket.addEventListener('open', () => {
         const data = new ByteBuffer(event.data);
         switch (data.readUnsignedByte()) {
             case 0:
+                document.getElementById('queue').hidden = true;
                 game = new Game(data.readUnsignedByte(), data.readUnsignedByte());
                 break;
             case 1:
@@ -232,9 +258,7 @@ socket.addEventListener('open', () => {
         }
     });
 
-    const data = new ByteBuffer(0, ByteBuffer.BIG_ENDIAN, true);
-    data.writeUnsignedByte(0);
-    socket.send(data.buffer);
+    queue();
 });
 socket.addEventListener('close', () => {
     alert('Connection lost.');
