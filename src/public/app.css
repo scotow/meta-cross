@@ -1,0 +1,313 @@
+html {
+    height: 100%;
+    font-size: 0;
+    font-family: 'Source Sans Pro', sans-serif;
+    color: white;
+    background: #000000;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    overflow: hidden;
+}
+
+.footer {
+    position: absolute;
+    bottom: 0;
+    width: 100%;
+    border-top: 2px solid #131313;
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+}
+
+.footer > .content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 904px;
+    height: 60px;
+    margin: 0 auto;
+}
+
+.footer .player > .sign {
+    position: relative;
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    vertical-align: middle;
+}
+
+.footer .player:first-of-type > .sign {
+    margin-right: 8px;
+}
+
+.footer .player:last-of-type > .sign {
+    margin-left: 8px;
+}
+
+.footer .player > .cross::before, .footer .player > .cross::after {
+    content: '';
+    position: absolute;
+    top: 2%;
+    left: 45%;
+    display: block;
+    width: 3px;
+    height: 96%;
+    background-color: #ffffff;
+    border-radius: 2px;
+}
+
+.footer .player > .cross::before {
+    transform: rotate(-45deg);
+}
+
+.footer .player > .cross::after {
+    transform: rotate(45deg);
+}
+
+.footer .player > .circle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 12px;
+    height: 12px;
+    border: 4px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -54%);
+}
+
+.footer .action, .footer .player > .label {
+    font-size: 20px;
+}
+
+.footer .player > .label {
+    position: relative;
+    display: inline-block;
+    vertical-align: middle;
+    color: #ffffff;
+}
+
+.footer .player > .label::after {
+    content: '';
+    position: absolute;
+    bottom: -3;
+    left: 50%;
+    height: 2px;
+    width: 0;
+    background-color: #ffffff;
+    transform: translateX(-50%);
+    transition: width 500ms;
+}
+
+.footer .player.playing > .label::after {
+    width: 100%;
+}
+
+.footer .action {
+    color: rgb(130, 130, 130);
+    cursor: pointer;
+    transition: opacity 500ms;
+}
+
+.footer .action.hidden {
+    opacity: 0;
+    cursor: default;
+    pointer-events: none;
+}
+
+.grid {
+    display: flex;
+    flex-direction: column;
+}
+
+.grid > .separator, .grid > .row > .separator {
+    background-color: #ffffff;
+    transition: opacity 1s;
+}
+
+.grid > .row {
+    flex: 1;
+    display: flex;
+}
+
+.grid > .row > .cell {
+    flex: 1;
+}
+
+.meta-grid {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 904px;
+    height: 904px;
+    transform: translate(-50%, -50%);
+    transition: transform 1s, transform-origin 1s;
+}
+
+.meta-grid > .separator {
+    height: 4px;
+    border-radius: 2px;
+}
+
+.meta-grid > .row > .separator {
+    width: 4px;
+}
+
+.meta-grid > .row:first-child > .separator {
+    border-radius: 2px 2px 0 0;
+}
+
+.meta-grid > .row:last-child > .separator {
+    border-radius: 0 0 2px 2px;
+}
+
+.meta-grid > .row > .cell {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.meta-grid.fadded > .separator, .meta-grid.fadded > .row > .separator {
+    opacity: 0.2;
+}
+
+.sub-grid {
+    width: 100%;
+    height: 100%;
+    transition: opacity 1s;
+}
+
+.sub-grid.fadded {
+    opacity: 0.2;
+}
+
+.sub-grid > .separator {
+    height: 2px;
+    border-radius: 1px;
+}
+
+.sub-grid > .row > .separator {
+    width: 2px;
+}
+
+.sub-grid > .row:first-child > .separator {
+    border-radius: 1px 1px 0 0;
+}
+
+.sub-grid > .row:last-child > .separator {
+    border-radius: 0 0 1px 1px;
+}
+
+.sub-grid > .row > .cell {
+    position: relative;
+}
+
+.sub-grid > .row > .cell:empty {
+    cursor: pointer;
+}
+
+.sub-grid > .row > .cell > .cross::before, .sub-grid > .row > .cell > .cross::after {
+    content: '';
+    position: absolute;
+    top: 45%;
+    left: 45%;
+    display: block;
+    width: 10%;
+    height: 10%;
+    background-color: #ffffff;
+    border-radius: 4px;
+    opacity: 0;
+}
+
+.sub-grid > .row > .cell > .cross::before {
+    animation: cross 200ms forwards, cross1 125ms forwards 300ms;
+}
+
+.sub-grid > .row > .cell > .cross::after {
+    animation: cross 200ms forwards, cross2 125ms forwards 300ms;
+}
+
+@keyframes cross {
+    100% {
+        top: 10%;
+        height: 80%;
+        opacity: 1;
+    }
+}
+
+@keyframes cross1 {
+    100% {
+        transform: rotate(-45deg);
+    }
+}
+
+@keyframes cross2 {
+    100% {
+        transform: rotate(45deg);
+    }
+}
+
+.sub-grid > .row > .cell > .circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background-color: #fff;
+    border-radius: 50%;
+    opacity: 0;
+    transform: translate(-50%, -50%);
+    animation: circle1 150ms forwards, circle2 300ms forwards 200ms;
+}
+
+.sub-grid > .row > .cell > .circle::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 30%;
+    height: 30%;
+    background-color: black;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    animation: circle3 150ms forwards, circle4 250ms forwards linear 200ms;
+}
+
+@keyframes circle1 {
+    100% {
+        width: 30%;
+        height: 30%;
+        opacity: 1;
+    }
+}
+
+@keyframes circle2 {
+    100% {
+        width: 70%;
+        height: 70%;
+    }
+}
+
+@keyframes circle3 {
+    100% {
+        width: 40%;
+        height: 40%;
+    }
+}
+
+@keyframes circle4 {
+    100% {
+        width: 70%;
+        height: 70%;
+    }
+}
+
+.sub-grid > .row > .cell.blink {
+    animation: blink 300ms steps(2) 3;
+}
+
+@keyframes blink {
+    50% {
+        visibility: hidden;
+    }
+}
