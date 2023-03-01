@@ -24,10 +24,7 @@ impl Lobby {
             Self::matchmaking(rx).await;
         });
 
-        Self {
-            matchmaking: tx,
-            // waiting: Mutex::new(None),
-        }
+        Self { matchmaking: tx }
     }
 
     pub async fn join(&self, mut player: Player) {
@@ -43,30 +40,6 @@ impl Lobby {
                 }
                 _ => return,
             }
-            // let message = match ws.next().await {
-            //     Some(Ok(message)) => message,
-            //     _ => break,
-            // };
-            // let Message::Binary(data) = message else {
-            //     break;
-            // };
-            // let Some((&id, _payload)) = data.split_first() else {
-            //     break;
-            // };
-
-            // match id {
-            //     0 => {
-            //         // if let Some(waiting) = self.waiting.lock().await.take() {
-            //         //     if waiting.
-            //         //     tokio::spawn(async {
-            //         //         self.play([waiting, ws]).await;
-            //         //     });
-            //         // } else {
-            //         //     self.waiting.lock().await.insert(ws);
-            //         // }
-            //     }
-            //     _ => break,
-            // }
         }
     }
 

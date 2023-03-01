@@ -7,14 +7,16 @@ use crate::game::{Coord, Sign};
 #[derive(Debug)]
 pub struct Player {
     websocket: WebSocket,
-    did_start_last_game: bool,
+    pub did_start_last_game: bool,
+    pub last_game_sign: Option<Sign>,
 }
 
 impl Player {
     pub fn new(websocket: WebSocket) -> Self {
         Self {
             websocket,
-            did_start_last_game: false,
+            did_start_last_game: true,
+            last_game_sign: None,
         }
     }
 
@@ -43,7 +45,7 @@ impl Player {
 
     pub async fn send_command(&mut self, command: Command) {
         let payload = match command {
-            Command::Start(sign) => vec![0, sign.as_byte()],
+            Command::Start(sign, starting) => vec![0, sign.as_byte(), starting.as_byte()],
             Command::PlaceAndMove(meta, sub, sign) => [
                 [1].as_slice(),
                 meta.as_byte().as_slice(),
@@ -73,7 +75,7 @@ impl Player {
 #[derive(Clone, Debug)]
 pub enum Command {
     Queue,
-    Start(Sign),
+    Start(Sign, Sign),
     Place(Coord, Coord),
     PlaceAndMove(Coord, Coord, Sign),
     PlaceAndWin(Coord, Coord, Sign, HashSet<Coord>),
