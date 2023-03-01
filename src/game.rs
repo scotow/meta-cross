@@ -138,7 +138,7 @@ impl Game {
         let first_player_sign = match (players[0].last_game_sign, players[1].last_game_sign) {
             (s1, s2) if s1 == s2 => Sign::random(),
             (None, Some(s2)) => s2.opponent(),
-            (Some(s1), None) => s1,
+            (Some(s1), _) => s1,
             _ => unreachable!(),
         };
         players[starting].did_start_last_game = true;
