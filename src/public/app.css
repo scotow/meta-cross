@@ -76,7 +76,7 @@ html {
     transform: translate(-50%, -54%);
 }
 
-.footer .action, .footer .player > .label {
+.footer .action > .label, .footer .player > .label {
     font-size: 20px;
 }
 
@@ -104,7 +104,7 @@ html {
 }
 
 .footer .action {
-    color: rgb(130, 130, 130);
+    text-align: center;
     cursor: pointer;
     transition: opacity 500ms;
 }
@@ -113,6 +113,16 @@ html {
     opacity: 0;
     cursor: default;
     pointer-events: none;
+}
+
+.footer .action > .label {
+    font-size: 16px;
+    color: #cfcfcf;
+}
+
+.footer .action > .button {
+    font-size: 10px;
+    color: #00a4ff;
 }
 
 .grid {

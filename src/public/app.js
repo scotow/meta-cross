@@ -2,12 +2,14 @@ const CROSS = 0;
 const CIRCLE = 1;
 
 class Game {
-    constructor(sign) {
+    constructor(sign, startingSign) {
         this.sign = sign;
-        this.zoomed = false;
-        this.playing = CROSS;
+        this.zoomedMode = false;
+        this.playing = startingSign;
+        this.currentMetaGrid = null;
         this.createGrid();
         this.createFooter();
+        console.log(sign, startingSign);
     }
 
     createGrid(container, selfX, selfY) {
@@ -50,12 +52,6 @@ class Game {
             this.gridEl = gridEl;
             document.body.append(gridEl);
         } else {
-            gridEl.addEventListener('click', (event) => {
-                if (!this.zoomed) {
-                    this.zoomToSubGrid(selfX, selfY);
-                    event.stopPropagation();
-                }
-            }, true);
             container.append(gridEl);
         }
     }
@@ -77,16 +73,26 @@ class Game {
         youLabelEl.classList.add('label');
         youLabelEl.innerText = 'You';
 
-        this.zoomOutEl = document.createElement('div');
-        this.zoomOutEl.classList.add('action', 'hidden');
-        this.zoomOutEl.innerText = 'Zoom out';
-        this.zoomOutEl.addEventListener('click', () => {
-            this.zoomed = false;
-            this.zoomOutEl.classList.add('hidden');
+        this.zoomModeEl = document.createElement('div');
+        this.zoomModeEl.classList.add('action', 'hidden');
+        this.zoomModeEl.addEventListener('click', () => {
+            this.zoomedMode = !this.zoomedMode;
+            this.zoomModeLabelEl.innerText = this.zoomedMode ? 'Zoomed' : 'Fullscreen';
 
-            this.gridEl.style.transform = 'translate(-50%, -50%)';
-            this.gridEl.style.transformOrigin = '50% 50%';
+            if (this.zoomedMode) {
+                this.zoomToSubGrid();
+            } else {
+                this.zoomOut();
+            }
         });
+
+        this.zoomModeLabelEl = document.createElement('div');
+        this.zoomModeLabelEl.classList.add('label');
+        this.zoomModeLabelEl.innerText = 'Fullscreen';
+
+        const zoomModeButtonEl = document.createElement('div');
+        zoomModeButtonEl.classList.add('button');
+        zoomModeButtonEl.innerText = 'Toggle';
 
         this.opponentEl = document.createElement('div');
         this.opponentEl.classList.add('player');
@@ -104,26 +110,33 @@ class Game {
 
         this.youEl.append(youSign, youLabelEl);
         this.opponentEl.append(opponentLabelEl, opponenetSign);
-        contentEl.append(this.youEl, this.zoomOutEl, this.opponentEl);
+        this.zoomModeEl.append(this.zoomModeLabelEl, zoomModeButtonEl);
+        contentEl.append(this.youEl, this.zoomModeEl, this.opponentEl);
         this.footerEl.append(contentEl);
         document.body.append(this.footerEl);
 
         this.updatePlyingIndicator();
     }
 
-    zoomToSubGrid(x, y) {
-        this.zoomed = true;
-        this.zoomOutEl.classList.remove('hidden');
-
+    zoomToSubGrid() {
         this.gridEl.style.transform = 'translate(-50%, -50%) scale(3)';
-        this.gridEl.style.transformOrigin = `${x * 50}% ${y * 50}%`;
+        this.gridEl.style.transformOrigin = `${this.currentMetaGrid.x * 50}% ${this.currentMetaGrid.y * 50}%`;
+    }
+
+    zoomOut() {
+        this.gridEl.style.transform = 'translate(-50%, -50%)';
+        this.gridEl.style.transformOrigin = '50% 50%';
     }
 
     placeSignAndMove(data) {
+        this.zoomModeEl.classList.remove('hidden');
+
         const meta = {
             x: data.readUnsignedByte(),
             y: data.readUnsignedByte(),
         };
+        this.currentMetaGrid = meta;
+
         const sub = {
             x: data.readUnsignedByte(),
             y: data.readUnsignedByte(),
@@ -142,10 +155,11 @@ class Game {
             }
             this.updatePlyingIndicator();
             
-            if (this.zoomed) {
-                this.zoomToSubGrid(sub.x, sub.y);
+            this.currentMetaGrid = sub;
+            if (this.zoomedMode) {
+                this.zoomToSubGrid();
             }
-        }, 1200);
+        }, 800);
     }
 
     placeSignAndWin(data) {
@@ -172,10 +186,9 @@ class Game {
                 cellEls[(meta.y * 3 + meta.x) * 9 + cell.y * 3 + cell.x].classList.add('blink');
             }
             setTimeout(() => {
-                this.zoomed = false;
-                this.gridEl.style.transform = 'translate(-50%, -50%)';
-                this.gridEl.style.transformOrigin = '50% 50%';
-                this.zoomOutEl.classList.add('hidden');
+                this.zoomedMode = false;
+                this.zoomOut();
+                this.zoomModeEl.classList.add('hidden');
                 this.updatePlyingIndicator(false);
 
                 setTimeout(() => {
@@ -208,7 +221,7 @@ socket.addEventListener('open', () => {
         const data = new ByteBuffer(event.data);
         switch (data.readUnsignedByte()) {
             case 0:
-                game = new Game(data.readUnsignedByte());
+                game = new Game(data.readUnsignedByte(), data.readUnsignedByte());
                 break;
             case 1:
                 game.placeSignAndMove(data);
