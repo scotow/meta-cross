@@ -40,6 +40,13 @@ impl Grid<Cell> {
 
         (!winning_cells.is_empty()).then(|| winning_cells)
     }
+
+    fn is_tie(&self) -> bool {
+        self.cells
+            .iter()
+            .flatten()
+            .all(|cell| matches!(cell, Cell::Set(_)))
+    }
 }
 
 impl<S> Index<Coord> for Grid<S> {
@@ -185,6 +192,10 @@ impl Game {
                             Command::PlaceAndWin(meta, sub, sign, winning_cells),
                         )
                         .await;
+                        return players.map(Some);
+                    } else if self.grid[sub].is_tie() {
+                        self.send_command(&mut players, Command::PlaceAndTie(meta, sub, sign))
+                            .await;
                         return players.map(Some);
                     } else {
                         self.send_command(&mut players, Command::PlaceAndMove(meta, sub, sign))

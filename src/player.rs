@@ -66,6 +66,13 @@ impl Player {
                     .as_slice(),
             ]
             .concat(),
+            Command::PlaceAndTie(meta, sub, sign) => [
+                [3].as_slice(),
+                meta.as_byte().as_slice(),
+                sub.as_byte().as_slice(),
+                [sign.as_byte()].as_slice(),
+            ]
+            .concat(),
             _ => unreachable!(),
         };
         self.websocket.send(Message::Binary(payload)).await.unwrap();
@@ -79,5 +86,6 @@ pub enum Command {
     Place(Coord, Coord),
     PlaceAndMove(Coord, Coord, Sign),
     PlaceAndWin(Coord, Coord, Sign, HashSet<Coord>),
+    PlaceAndTie(Coord, Coord, Sign),
     Leave,
 }

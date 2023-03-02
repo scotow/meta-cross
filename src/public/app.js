@@ -7,6 +7,7 @@ class Game {
         this.zoomedMode = false;
         this.playing = startingSign;
         this.currentMetaGrid = null;
+        this.finished = false;
         this.createGrid();
         this.createFooter();
     }
@@ -27,7 +28,9 @@ class Game {
                     this.createGrid(cellEl, x, y);
                 } else {
                     cellEl.addEventListener('click', () => {
-                        socket.send(new Uint8Array([1, selfX, selfY, x, y]));
+                        if (!this.finished) {
+                            socket.send(new Uint8Array([1, selfX, selfY, x, y]));
+                        }
                     });
                 }
 
@@ -127,23 +130,33 @@ class Game {
         this.gridEl.style.transformOrigin = '50% 50%';
     }
 
-    placeSignAndMove(data) {
-        this.zoomModeEl.classList.remove('hidden');
-
+    placeSign(data) {
         const meta = {
+            x: data.readUnsignedByte(),
+            y: data.readUnsignedByte(),
+        };
+        const sub = {
             x: data.readUnsignedByte(),
             y: data.readUnsignedByte(),
         };
         this.currentMetaGrid = meta;
 
-        const sub = {
-            x: data.readUnsignedByte(),
-            y: data.readUnsignedByte(),
-        };
         const cellEl = document.querySelectorAll('.sub-grid .cell')[(meta.y * 3 + meta.x) * 9 + sub.y * 3 + sub.x];
         const signEl = document.createElement('div');
-        signEl.classList.add(data.readUnsignedByte() ? 'circle' : 'cross');
+        const sign = data.readUnsignedByte();
+        signEl.classList.add(sign ? 'circle' : 'cross');
         cellEl.append(signEl);
+
+        return {
+            meta,
+            sub,
+            sign,
+        };
+    }
+
+    placeSignAndMove(data) {
+        this.zoomModeEl.classList.remove('hidden');
+        const { sub } = this.placeSign(data);
         this.playing ^= 1;
 
         setTimeout(() => {
@@ -162,19 +175,8 @@ class Game {
     }
 
     placeSignAndWin(data) {
-        const meta = {
-            x: data.readUnsignedByte(),
-            y: data.readUnsignedByte(),
-        };
-        const sub = {
-            x: data.readUnsignedByte(),
-            y: data.readUnsignedByte(),
-        };
-        const cellEl = document.querySelectorAll('.sub-grid .cell')[(meta.y * 3 + meta.x) * 9 + sub.y * 3 + sub.x];
-        const signEl = document.createElement('div');
-        const sign = data.readUnsignedByte();
-        signEl.classList.add(sign ? 'circle' : 'cross');
-        cellEl.append(signEl);
+        const { meta, sign } = this.placeSign(data);
+        this.finished = true;
 
         setTimeout(() => {
             let cellEls = document.querySelectorAll('.sub-grid .cell');
@@ -186,34 +188,47 @@ class Game {
                 cellEls[(meta.y * 3 + meta.x) * 9 + cell.y * 3 + cell.x].classList.add('blink');
             }
             setTimeout(() => {
-                this.updatePlyingIndicator(false);
-                this.zoomedMode = false;
-                this.zoomOut();
-
-                const gameStatusLabelEl = document.createElement('div');
-                gameStatusLabelEl.classList.add('label');
-                gameStatusLabelEl.innerText = sign === this.sign ? 'You win' : 'You lose';
-        
-                const gameStatusEl = document.createElement('div');
-                gameStatusEl.classList.add('action');
-                gameStatusEl.addEventListener('click', () => {
-                    this.gridEl.remove();
-                    this.footerEl.remove();
-                    queue();
-                });
-        
-                const gameStatusButtonEl = document.createElement('div');
-                gameStatusButtonEl.classList.add('button');
-                gameStatusButtonEl.innerText = 'Play again';
-        
-                gameStatusEl.append(gameStatusLabelEl, gameStatusButtonEl);
-                this.zoomModeEl.replaceWith(gameStatusEl);
-
-                setTimeout(() => {
-                    document.querySelectorAll('.grid').forEach((el) => el.classList.remove('fadded'));
-                }, 800);
+                this.endGame(sign === this.sign ? 'win' : 'lose');
             }, 1000);
         }, 600);
+    }
+
+    placeSignAndTie(data) {
+        this.placeSign(data);
+        this.finished = true;
+        
+        setTimeout(() => {
+            this.endGame('tie');
+        }, 600);
+    }
+
+    endGame(result) {
+        this.updatePlyingIndicator(false);
+        this.zoomedMode = false;
+        this.zoomOut();
+
+        const gameStatusLabelEl = document.createElement('div');
+        gameStatusLabelEl.classList.add('label');
+        gameStatusLabelEl.innerText = result === 'win' ? 'You win' : result === 'lose' ? 'You lose' : 'Tie';
+
+        const gameStatusEl = document.createElement('div');
+        gameStatusEl.classList.add('action');
+        gameStatusEl.addEventListener('click', () => {
+            this.gridEl.remove();
+            this.footerEl.remove();
+            queue();
+        });
+
+        const gameStatusButtonEl = document.createElement('div');
+        gameStatusButtonEl.classList.add('button');
+        gameStatusButtonEl.innerText = 'Play again';
+
+        gameStatusEl.append(gameStatusLabelEl, gameStatusButtonEl);
+        this.zoomModeEl.replaceWith(gameStatusEl);
+
+        setTimeout(() => {
+            document.querySelectorAll('.grid').forEach((el) => el.classList.remove('fadded'));
+        }, 800);
     }
 
     updatePlyingIndicator(state) {
@@ -254,6 +269,9 @@ socket.addEventListener('open', () => {
                 break;
             case 2:
                 game.placeSignAndWin(data);
+                break;
+            case 3:
+                game.placeSignAndTie(data);
                 break;
         }
     });
