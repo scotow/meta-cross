@@ -23,6 +23,7 @@ use crate::player::Player;
 mod asset;
 mod game;
 mod lobby;
+mod misc;
 mod player;
 
 #[tokio::main]

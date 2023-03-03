@@ -2,7 +2,11 @@ use std::collections::HashSet;
 
 use axum::extract::ws::{Message, WebSocket};
 
-use crate::game::{Coord, Sign};
+use crate::{
+    game::{Coord, Sign},
+    misc::AsBytes,
+    packet,
+};
 
 #[derive(Debug)]
 pub struct Player {
@@ -43,39 +47,17 @@ impl Player {
         }
     }
 
-    pub async fn send_command(&mut self, command: Command) {
+    pub async fn send_command(&mut self, command: Command) -> bool {
         let payload = match command {
-            Command::Start(sign, starting) => vec![0, sign.as_byte(), starting.as_byte()],
-            Command::PlaceAndMove(meta, sub, sign) => [
-                [1].as_slice(),
-                meta.as_byte().as_slice(),
-                sub.as_byte().as_slice(),
-                [sign.as_byte()].as_slice(),
-            ]
-            .concat(),
-            Command::PlaceAndWin(meta, sub, sign, winning_cells) => [
-                [2].as_slice(),
-                meta.as_byte().as_slice(),
-                sub.as_byte().as_slice(),
-                [sign.as_byte()].as_slice(),
-                winning_cells
-                    .into_iter()
-                    .map(|coord| coord.as_byte())
-                    .collect::<Vec<_>>()
-                    .concat()
-                    .as_slice(),
-            ]
-            .concat(),
-            Command::PlaceAndTie(meta, sub, sign) => [
-                [3].as_slice(),
-                meta.as_byte().as_slice(),
-                sub.as_byte().as_slice(),
-                [sign.as_byte()].as_slice(),
-            ]
-            .concat(),
-            _ => unreachable!(),
+            Command::Start(sign, starting) => packet![0u8, sign, starting],
+            Command::PlaceAndMove(meta, sub, sign) => packet![1u8, meta, sub, sign],
+            Command::PlaceAndWin(meta, sub, sign, winning_cells) => {
+                packet![2u8, meta, sub, sign, winning_cells]
+            }
+            Command::PlaceAndTie(meta, sub, sign) => packet![3u8, meta, sub, sign],
+            _ => return false,
         };
-        self.websocket.send(Message::Binary(payload)).await.unwrap();
+        self.websocket.send(Message::Binary(payload)).await.is_ok()
     }
 }
 

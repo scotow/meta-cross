@@ -28,7 +28,6 @@ impl Lobby {
     }
 
     pub async fn join(&self, mut player: Player) {
-        // let (mut tx, mut rx) = ws.split();
         loop {
             match player.next_command().await {
                 Command::Queue => {

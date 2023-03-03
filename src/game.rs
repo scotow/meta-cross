@@ -8,7 +8,10 @@ use byteorder::ReadBytesExt;
 use rand::random;
 use tokio::select;
 
-use crate::player::{Command, Player};
+use crate::{
+    misc::AsBytes,
+    player::{Command, Player},
+};
 
 const GRID_SIZE: usize = 3;
 
@@ -80,8 +83,12 @@ impl Coord {
             None
         }
     }
+}
 
-    pub fn as_byte(&self) -> [u8; 2] {
+impl AsBytes for Coord {
+    type Output = [u8; 2];
+
+    fn as_bytes(&self) -> Self::Output {
         [self.x as u8, self.y as u8]
     }
 }
@@ -108,16 +115,20 @@ impl Sign {
         }
     }
 
-    pub fn as_byte(&self) -> u8 {
-        *self as u8
-    }
-
     fn random() -> Self {
         if random() {
             Self::Cross
         } else {
             Self::Circle
         }
+    }
+}
+
+impl AsBytes for Sign {
+    type Output = [u8; 1];
+
+    fn as_bytes(&self) -> Self::Output {
+        [*self as u8]
     }
 }
 
@@ -138,7 +149,7 @@ impl Game {
 
     pub async fn run(mut self, mut players: [Player; 2]) -> [Option<Player>; 2] {
         let starting = if players[0].did_start_last_game == players[1].did_start_last_game {
-            random::<bool>()
+            random()
         } else {
             players[0].did_start_last_game
         } as usize;
