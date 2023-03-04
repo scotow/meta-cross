@@ -9,7 +9,9 @@ class Game {
         this.finished = false;
 
         document.getElementById('game').classList.remove('hidden');
+        document.getElementById('you').classList.remove('cross', 'circle');
         document.getElementById('you').classList.add(sign === CROSS ? 'cross' : 'circle');
+        document.getElementById('opponent').classList.remove('cross', 'circle');
         document.getElementById('opponent').classList.add(sign === CROSS ? 'circle' : 'cross');
         document.querySelectorAll('.footer .action').forEach((actionEl) => {
             actionEl.classList.add('hidden');
@@ -29,11 +31,10 @@ class Game {
         };
         this.currentMetaGrid = meta;
 
-        const cellEl = document.querySelectorAll('.sub-grid .cell')[(meta.y * 3 + meta.x) * 9 + sub.y * 3 + sub.x];
         const signEl = document.createElement('div');
         const sign = data.readUnsignedByte();
         signEl.classList.add(sign ? 'circle' : 'cross');
-        cellEl.append(signEl);
+        document.querySelectorAll('.sub-grid .cell')[(meta.y * 3 + meta.x) * 9 + sub.y * 3 + sub.x].append(signEl);
 
         return {
             meta,

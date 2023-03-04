@@ -103,9 +103,9 @@ html {
     position: absolute;
     top: 50%;
     left: 50%;
-    width: 908px;
-    height: 908px;
-    transform: translate(-50%, -50%);
+    width: 85vmin;
+    aspect-ratio: 1 / 1;
+    transform: translate(-50%, calc(-50% - 30px));
     transition: transform 1s, transform-origin 1s;
 }
 
@@ -316,7 +316,7 @@ html {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    width: 908px;
+    width: 85vmin;
     height: 60px;
     margin: 0 auto;
 }
