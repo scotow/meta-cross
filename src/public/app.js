@@ -38,6 +38,12 @@ class Game {
                 if (x < 2) {
                     const seperatorEl = document.createElement('div');
                     seperatorEl.classList.add('separator');
+                    if (container) {
+                        seperatorEl.style.animationDelay = `${(selfX + selfY) * 200 + (x + y) * 66.66}ms`;
+                    } else {
+                        seperatorEl.style.animationDelay = `${(x + y) * 200}ms`;
+                    }
+                    seperatorEl.style.animationTimingFunction = x === 0 ? 'ease-in' : x === 1 ? 'linear' : 'ease-out';
                     rowEl.append(seperatorEl);
                 }
             }
@@ -46,6 +52,12 @@ class Game {
             if (y < 2) {
                 const seperatorEl = document.createElement('div');
                 seperatorEl.classList.add('separator');
+                if (container) {
+                    seperatorEl.style.animationDelay = `${(selfX + selfY) * 200 + y * 66.66}ms`;
+                } else {
+                    seperatorEl.style.animationDelay = `${y * 200}ms`;
+                }
+                seperatorEl.style.animationTimingFunction = y === 0 ? 'ease-in' : y === 1 ? 'linear' : 'ease-out';
                 gridEl.append(seperatorEl);
             }
         }
