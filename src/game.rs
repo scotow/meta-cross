@@ -175,10 +175,16 @@ impl Game {
             let (player_index, message) = self.next_message(&mut players).await;
             match message {
                 GameMessage::PlayerLeft => {
-                    let [p1, p2] = players;
+                    let [mut p1, mut p2] = players;
                     return match player_index {
-                        0 => [None, Some(p2)],
-                        1 => [Some(p1), None],
+                        0 => {
+                            p2.send_command(Command::WinByForfeit).await;
+                            [None, Some(p2)]
+                        }
+                        1 => {
+                            p1.send_command(Command::WinByForfeit).await;
+                            [Some(p1), None]
+                        }
                         _ => unreachable!(),
                     };
                 }

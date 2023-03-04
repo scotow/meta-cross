@@ -202,6 +202,11 @@ class Game {
         }, 600);
     }
 
+    winByForfeit() {
+        this.finished = true;
+        this.endGame('forfeit');
+    }
+
     endGame(result) {
         this.updatePlyingIndicator(false);
         this.zoomedMode = false;
@@ -209,7 +214,22 @@ class Game {
 
         const gameStatusLabelEl = document.createElement('div');
         gameStatusLabelEl.classList.add('label');
-        gameStatusLabelEl.innerText = result === 'win' ? 'You win' : result === 'lose' ? 'You lose' : 'Tie';
+        let message;
+        switch (result) {
+            case 'win':
+                message = 'You win';
+                break;
+            case 'lose':
+                message = 'You lose';
+                break;
+            case 'tie':
+                message = 'Tie';
+                break;
+            case 'forfeit':
+                message = 'Win by forfeit';
+                break;
+        }
+        gameStatusLabelEl.innerText = message;
 
         const gameStatusEl = document.createElement('div');
         gameStatusEl.classList.add('action');
@@ -272,6 +292,9 @@ socket.addEventListener('open', () => {
                 break;
             case 3:
                 game.placeSignAndTie(data);
+                break;
+            case 4:
+                game.winByForfeit();
                 break;
         }
     });

@@ -55,6 +55,7 @@ impl Player {
                 packet![2u8, meta, sub, sign, winning_cells]
             }
             Command::PlaceAndTie(meta, sub, sign) => packet![3u8, meta, sub, sign],
+            Command::WinByForfeit => packet![4u8],
             _ => return false,
         };
         self.websocket.send(Message::Binary(payload)).await.is_ok()
@@ -69,5 +70,6 @@ pub enum Command {
     PlaceAndMove(Coord, Coord, Sign),
     PlaceAndWin(Coord, Coord, Sign, HashSet<Coord>),
     PlaceAndTie(Coord, Coord, Sign),
+    WinByForfeit,
     Leave,
 }
