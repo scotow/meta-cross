@@ -132,124 +132,114 @@ impl AsBytes for Sign {
     }
 }
 
-pub struct Game {
-    grid: Grid<Grid<Cell>>,
-    playing: Sign,
-    current_sub_grid: Option<Coord>,
+pub async fn run(players: &mut [Player; 2]) -> Result<(), usize> {
+    if let Err(leaver) = inner_run(players).await {
+        players[leaver ^ 1]
+            .send_command(Command::WinByForfeit)
+            .await;
+        return Err(leaver);
+    }
+    Ok(())
 }
 
-impl Game {
-    pub fn new() -> Self {
-        Self {
-            grid: Grid::default(),
-            playing: Sign::Cross,
-            current_sub_grid: None,
+async fn inner_run(players: &mut [Player; 2]) -> Result<(), usize> {
+    let mut grid = Grid::<Grid<Cell>>::default();
+    let mut current_sub_grid = None;
+
+    let starting = if players[0].did_start_last_game == players[1].did_start_last_game {
+        random()
+    } else {
+        players[0].did_start_last_game
+    } as usize;
+    let first_player_sign = match (players[0].last_game_sign, players[1].last_game_sign) {
+        (s1, s2) if s1 == s2 => Sign::random(),
+        (None, Some(s2)) => s2.opponent(),
+        (Some(s1), _) => s1,
+        _ => unreachable!(),
+    };
+    players[starting].did_start_last_game = true;
+    players[starting ^ 1].did_start_last_game = false;
+    players[0].last_game_sign = Some(first_player_sign);
+    players[1].last_game_sign = Some(first_player_sign.opponent());
+    let mut playing = players[starting].last_game_sign.unwrap();
+
+    players[0]
+        .send_command(Command::Start(first_player_sign, playing))
+        .await;
+    players[1]
+        .send_command(Command::Start(first_player_sign.opponent(), playing))
+        .await;
+    loop {
+        let PlaceRequest {
+            player_index,
+            meta,
+            sub,
+        } = next_message(players).await?;
+        let sign = players[player_index].last_game_sign.unwrap();
+        if playing != sign {
+            continue;
         }
-    }
-
-    pub async fn run(mut self, mut players: [Player; 2]) -> [Option<Player>; 2] {
-        let starting = if players[0].did_start_last_game == players[1].did_start_last_game {
-            random()
-        } else {
-            players[0].did_start_last_game
-        } as usize;
-        let first_player_sign = match (players[0].last_game_sign, players[1].last_game_sign) {
-            (s1, s2) if s1 == s2 => Sign::random(),
-            (None, Some(s2)) => s2.opponent(),
-            (Some(s1), _) => s1,
-            _ => unreachable!(),
-        };
-        players[starting].did_start_last_game = true;
-        players[starting ^ 1].did_start_last_game = false;
-        players[0].last_game_sign = Some(first_player_sign);
-        players[1].last_game_sign = Some(first_player_sign.opponent());
-        self.playing = players[starting].last_game_sign.unwrap();
-
-        players[0]
-            .send_command(Command::Start(first_player_sign, self.playing))
-            .await;
-        players[1]
-            .send_command(Command::Start(first_player_sign.opponent(), self.playing))
-            .await;
-        loop {
-            let (player_index, message) = self.next_message(&mut players).await;
-            match message {
-                GameMessage::PlayerLeft => {
-                    let [mut p1, mut p2] = players;
-                    return match player_index {
-                        0 => {
-                            p2.send_command(Command::WinByForfeit).await;
-                            [None, Some(p2)]
-                        }
-                        1 => {
-                            p1.send_command(Command::WinByForfeit).await;
-                            [Some(p1), None]
-                        }
-                        _ => unreachable!(),
-                    };
-                }
-                GameMessage::Place(meta, sub) => {
-                    let sign = players[player_index].last_game_sign.unwrap();
-                    if self.playing != sign {
-                        continue;
-                    }
-                    if let Some(current) = self.current_sub_grid {
-                        if meta != current {
-                            continue;
-                        }
-                    }
-                    if self.grid[meta][sub] != Cell::Unset {
-                        continue;
-                    }
-
-                    self.grid[meta][sub] = Cell::Set(sign);
-                    if let Some(winning_cells) = self.grid[meta].is_win(sign) {
-                        self.send_command(
-                            &mut players,
-                            Command::PlaceAndWin(meta, sub, sign, winning_cells),
-                        )
-                        .await;
-                        return players.map(Some);
-                    } else if self.grid[sub].is_tie() {
-                        self.send_command(&mut players, Command::PlaceAndTie(meta, sub, sign))
-                            .await;
-                        return players.map(Some);
-                    } else {
-                        self.send_command(&mut players, Command::PlaceAndMove(meta, sub, sign))
-                            .await;
-                        self.current_sub_grid = Some(sub);
-                        self.playing = self.playing.opponent();
-                    }
-                }
+        if let Some(current) = current_sub_grid {
+            if meta != current {
+                continue;
             }
         }
-    }
+        if grid[meta][sub] != Cell::Unset {
+            continue;
+        }
 
-    async fn send_command(&mut self, players: &mut [Player; 2], command: Command) {
-        players[0].send_command(command.clone()).await;
-        players[1].send_command(command).await;
-    }
-
-    async fn next_message(&mut self, players: &mut [Player; 2]) -> (usize, GameMessage) {
-        let [p1, p2] = players;
-        select! {
-            command = p1.next_command() => {
-                (0, match command {
-                    Command::Place(meta, sub) => GameMessage::Place(meta, sub),
-                    _ => GameMessage::PlayerLeft,
-                })
-            },
-            command = p2.next_command() => {
-                (1, match command {
-                    Command::Place(meta, sub) => GameMessage::Place(meta, sub),
-                    _ => GameMessage::PlayerLeft,
-                })
-            },
+        grid[meta][sub] = Cell::Set(sign);
+        if let Some(winning_cells) = grid[meta].is_win(sign) {
+            return send_command(
+                players,
+                Command::PlaceAndWin(meta, sub, sign, winning_cells),
+            )
+            .await;
+        } else if grid[sub].is_tie() {
+            return send_command(players, Command::PlaceAndTie(meta, sub, sign)).await;
+        } else {
+            send_command(players, Command::PlaceAndMove(meta, sub, sign)).await?;
+            current_sub_grid = Some(sub);
+            playing = playing.opponent();
         }
     }
 }
 
-enum GameMessage {
-    PlayerLeft,
-    Place(Coord, Coord),
+async fn next_message(players: &mut [Player; 2]) -> Result<PlaceRequest, usize> {
+    let [p1, p2] = players;
+    select! {
+        command = p1.next_command() => {
+            match command {
+                Command::Place(meta, sub) => Ok(PlaceRequest {
+                    player_index: 0,
+                    meta, sub,
+                }),
+                _ => Err(0),
+            }
+        },
+        command = p2.next_command() => {
+            match command {
+                Command::Place(meta, sub) => Ok(PlaceRequest {
+                    player_index: 1,
+                    meta, sub,
+                }),
+                _ => Err(1),
+            }
+        },
+    }
+}
+
+async fn send_command(players: &mut [Player; 2], command: Command) -> Result<(), usize> {
+    for i in 0..2 {
+        if !players[i].send_command(command.clone()).await {
+            return Err(i);
+        }
+    }
+    Ok(())
+}
+
+struct PlaceRequest {
+    player_index: usize,
+    meta: Coord,
+    sub: Coord,
 }

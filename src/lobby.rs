@@ -9,7 +9,7 @@ use tokio::{
 };
 
 use crate::{
-    game::Game,
+    game,
     player::{Command, Player},
 };
 
@@ -59,10 +59,12 @@ impl Lobby {
                     second_player = rx.recv() => {
                         let (second_player, second_player_channel) = second_player.unwrap();
                         tokio::spawn(async move {
-                            let game = Game::new();
-                            let [first_player, second_player] = game.run([first_player, second_player]).await;
-                            first_player_channel.send(first_player).unwrap();
-                            second_player_channel.send(second_player).unwrap();
+                            let mut players = [first_player, second_player];
+                            let status = game::run(&mut players).await;
+                            let [first_player, second_player] = players;
+
+                            first_player_channel.send((status.is_ok() || status == Err(1)).then_some(first_player)).unwrap();
+                            second_player_channel.send((status.is_ok() || status == Err(0)).then_some(second_player)).unwrap();
                         });
                     }
                 }
