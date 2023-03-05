@@ -132,17 +132,17 @@ impl AsBytes for Sign {
     }
 }
 
-pub async fn run(players: &mut [Player; 2]) -> Result<(), usize> {
-    if let Err(leaver) = inner_run(players).await {
-        players[leaver ^ 1]
-            .send_command(Command::WinByForfeit)
-            .await;
-        return Err(leaver);
+pub async fn run(players: &mut [Player; 2]) -> Result<(), PlayerDeparture> {
+    if let Err(departure) = inner_run(players).await {
+        if let Some(other) = departure.other(players) {
+            other.send_command(Command::WinByForfeit).await;
+        }
+        return Err(departure);
     }
     Ok(())
 }
 
-async fn inner_run(players: &mut [Player; 2]) -> Result<(), usize> {
+async fn inner_run(players: &mut [Player; 2]) -> Result<(), PlayerDeparture> {
     let mut grid = Grid::<Grid<Cell>>::default();
     let mut current_sub_grid = None;
 
@@ -205,7 +205,7 @@ async fn inner_run(players: &mut [Player; 2]) -> Result<(), usize> {
     }
 }
 
-async fn next_message(players: &mut [Player; 2]) -> Result<PlaceRequest, usize> {
+async fn next_message(players: &mut [Player; 2]) -> Result<PlaceRequest, PlayerDeparture> {
     let [p1, p2] = players;
     select! {
         command = p1.next_command() => {
@@ -214,7 +214,7 @@ async fn next_message(players: &mut [Player; 2]) -> Result<PlaceRequest, usize> 
                     player_index: 0,
                     meta, sub,
                 }),
-                _ => Err(0),
+                _ => Err(PlayerDeparture::p1()),
             }
         },
         command = p2.next_command() => {
@@ -223,23 +223,65 @@ async fn next_message(players: &mut [Player; 2]) -> Result<PlaceRequest, usize> 
                     player_index: 1,
                     meta, sub,
                 }),
-                _ => Err(1),
+                _ => Err(PlayerDeparture::p2()),
             }
         },
     }
 }
 
-async fn send_command(players: &mut [Player; 2], command: Command) -> Result<(), usize> {
-    for i in 0..2 {
-        if !players[i].send_command(command.clone()).await {
-            return Err(i);
-        }
+async fn send_command(players: &mut [Player; 2], command: Command) -> Result<(), PlayerDeparture> {
+    let mut departure = PlayerDeparture::default();
+    if !players[0].send_command(command.clone()).await {
+        departure.p1 = true;
     }
-    Ok(())
+    if !players[1].send_command(command).await {
+        departure.p2 = true;
+    }
+    departure.as_error()
 }
 
 struct PlaceRequest {
     player_index: usize,
     meta: Coord,
     sub: Coord,
+}
+
+#[derive(Default, Copy, Clone)]
+pub struct PlayerDeparture {
+    pub p1: bool,
+    pub p2: bool,
+}
+
+impl PlayerDeparture {
+    fn p1() -> Self {
+        PlayerDeparture {
+            p1: true,
+            p2: false,
+        }
+    }
+
+    fn p2() -> Self {
+        PlayerDeparture {
+            p1: false,
+            p2: true,
+        }
+    }
+
+    fn as_error(self) -> Result<(), PlayerDeparture> {
+        if self.p1 || self.p2 {
+            return Err(self);
+        } else {
+            Ok(())
+        }
+    }
+
+    fn other<'a>(&self, players: &'a mut [Player; 2]) -> Option<&'a mut Player> {
+        if !self.p1 {
+            return Some(&mut players[0]);
+        }
+        if !self.p2 {
+            return Some(&mut players[1]);
+        }
+        None
+    }
 }

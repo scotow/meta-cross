@@ -63,8 +63,16 @@ impl Lobby {
                             let status = game::run(&mut players).await;
                             let [first_player, second_player] = players;
 
-                            first_player_channel.send((status.is_ok() || status == Err(1)).then_some(first_player)).unwrap();
-                            second_player_channel.send((status.is_ok() || status == Err(0)).then_some(second_player)).unwrap();
+                            match status {
+                                Ok(()) => {
+                                    first_player_channel.send(Some(first_player)).unwrap();
+                                    second_player_channel.send(Some(second_player)).unwrap();
+                                },
+                                Err(departure) => {
+                                    first_player_channel.send((!departure.p1).then_some(first_player)).unwrap();
+                                    second_player_channel.send((!departure.p2).then_some(second_player)).unwrap();
+                                }
+                            }
                         });
                     }
                 }
