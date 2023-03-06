@@ -31,7 +31,9 @@ impl Lobby {
         loop {
             match player.next_command().await {
                 Command::Queue => {
-                    if let Some(p) = self.queue(player).await {
+                    let (otx, orx) = oneshot::channel();
+                    self.matchmaking.send((player, otx)).await.unwrap();
+                    if let Some(p) = orx.await.unwrap() {
                         player = p;
                     } else {
                         return;
@@ -40,12 +42,6 @@ impl Lobby {
                 _ => return,
             }
         }
-    }
-
-    async fn queue(&self, player: Player) -> Option<Player> {
-        let (otx, orx) = oneshot::channel();
-        self.matchmaking.send((player, otx)).await.unwrap();
-        orx.await.unwrap()
     }
 
     async fn matchmaking(mut rx: Receiver<(Player, OneshotSender<Option<Player>>)>) {
